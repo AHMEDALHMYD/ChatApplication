@@ -77,22 +77,25 @@ builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular",
-        policy =>
-        {
-            policy
-                .WithOrigins("http://localhost:4200")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://chat-application-six-gilt.vercel.app"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
 builder.WebHost.UseUrls("http://0.0.0.0:80");
 
 var app = builder.Build();
-app.UseCors("AllowAngular");
+
 app.UseRouting();
+app.UseCors("AllowAngular");
 
 app.UseSwagger();
 app.UseSwaggerUI();
