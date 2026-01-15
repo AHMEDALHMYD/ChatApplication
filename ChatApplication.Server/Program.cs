@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-
+using Microsoft.AspNetCore.HttpOverrides;
 
 
 
@@ -78,12 +78,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        var origins = builder.Configuration["CORS_ORIGINS"]?
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            ?? Array.Empty<string>();
-
         policy
-            .WithOrigins(origins)
+            .SetIsOriginAllowed(origin =>
+                origin == "http://localhost:4200"
+                || origin == "https://chat-application-six-gilt.vercel.app"
+                || (origin != null && origin.EndsWith(".vercel.app"))
+            )
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -92,12 +92,16 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
-
-app.UseRouting();
-app.UseCors("AllowAngular");
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseRouting();
+app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
