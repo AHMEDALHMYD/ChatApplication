@@ -22,7 +22,7 @@ builder.Services.AddSwaggerGen();
 //Database
 builder.Services.AddDbContext<ChatDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration["ConnectionStrings:DefaultConnection"]
+        builder.Configuration.GetConnectionString("DefaultConnection")
     ));
 
 //Services
@@ -74,24 +74,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // SignalR
 builder.Services.AddSignalR();
-
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular",
-        policy =>
-        {
-            policy
-                .WithOrigins(
-                    "http://localhost:4200",
-                    "https://chat-application-six-gilt.vercel.app"
-                )
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        var origins = builder.Configuration["CORS_ORIGINS"]?
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ?? Array.Empty<string>();
+
+        policy
+            .WithOrigins(origins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
 
-builder.WebHost.UseUrls("http://0.0.0.0:80");
 
 var app = builder.Build();
 
