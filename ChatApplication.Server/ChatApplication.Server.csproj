@@ -18,10 +18,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
 
-    <!-- ✅ Added SQLite provider -->
+    <!-- ✅ SQLite Provider -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
-
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
 
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
       <PrivateAssets>all</PrivateAssets>
