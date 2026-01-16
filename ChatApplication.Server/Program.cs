@@ -1,82 +1,97 @@
 using ChatApplication.Server.Data;
 using ChatApplication.Server.Hubs;
 using ChatApplication.Server.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers + SignalR
-builder.Services.AddControllers();
-builder.Services.AddSignalR();
+@@ -22,74 +19,49 @@
+options.UseSqlite(cs);
+});
 
+// ✅ Auth Service DI
+// Services
+builder.Services.AddScoped<AuthService>();
+
+// ✅ Swagger
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ CORS (حدد Origin تبعك بالضبط)
-var allowedOrigins = new[]
+// ✅ JWT Authentication (إذا عندك توكن)
+var secretKey = builder.Configuration["Authentication:Secretkey"];
+if (!string.IsNullOrWhiteSpace(secretKey))
 {
-    "https://chat-application-six-gilt.vercel.app"
-    // إذا عندك دومين ثاني على vercel ضيفه هون كمان
-};
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidIssuer = builder.Configuration["Authentication:Issuer"],
+                ValidAudience = builder.Configuration["Authentication:Audience"],
+                ValidateLifetime = true
+            };
+        });
+}
 
+// ✅ CORS (Vercel)
+// ✅✅ CORS حل نهائي (للتجربة والتطوير)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", policy =>
-    {
-        policy
+options.AddPolicy("CorsPolicy", policy =>
+{
+policy
             .SetIsOriginAllowed(origin =>
                 !string.IsNullOrWhiteSpace(origin) &&
-                (origin.EndsWith(".vercel.app") || origin.StartsWith("http://localhost:4200"))
+                origin.StartsWith("https://chat-application") &&
+                origin.EndsWith(".vercel.app")
             )
-            .AllowAnyHeader()
+            .AllowAnyOrigin()
+.AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
-    });
+            .AllowAnyMethod();
+});
 });
 
-// ✅ SQLite DbContext
-builder.Services.AddDbContext<ChatDbContext>(options =>
-{
-    // لازم يكون SQLite connection string فقط
-    var cs = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=chat.db";
-    options.UseSqlite(cs);
-});
-
-// خدماتك
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<MessageService>();
 var app = builder.Build();
 
+// ✅ Forwarded headers (Render)
 // Forwarded headers (Render)
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
+// ✅ إنشاء/تطبيق المايغريشن عند الإقلاع
 // Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ✅ مهم: UseRouting قبل CORS
-app.UseRouting();
-
-// ✅ مهم جداً: CORS مباشرة بعد UseRouting وقبل Auth
-app.UseCors("CorsPolicy");
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-app.MapHub<ChatHub>("/chatHub");
-
-// ✅ Migration
+// ✅ Apply migrations automatically
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
-    db.Database.Migrate();
+var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+db.Database.Migrate();
 }
 
-app.Run();
+// ✅ Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.UseRouting();
+
+// ✅ مهم جداً: CORS قبل Authentication
+app.UseCors("CorsPolicy");
+
+// لازم يكون قبل Authorization
+app.UseAuthentication();
+app.UseAuthorization();
