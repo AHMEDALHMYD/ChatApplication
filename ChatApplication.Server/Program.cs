@@ -51,7 +51,7 @@ options.AddPolicy("CorsPolicy", policy =>
 policy
             .SetIsOriginAllowed(origin =>
                 !string.IsNullOrWhiteSpace(origin) &&
-                origin.StartsWith("https://chat-application") &&
+                origin.StartsWith("https://chat-application-six-gilt.vercel.app/") &&
                 origin.EndsWith(".vercel.app")
             )
             .AllowAnyOrigin()
