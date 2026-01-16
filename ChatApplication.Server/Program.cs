@@ -10,33 +10,39 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-// ✅ SQLite DbContext
-builder.Services.AddDbContext<ChatDbContext>(options =>
-{
-    var cs = builder.Configuration.GetConnectionString("DefaultConnection")
-             ?? "Data Source=chat.db";
-
-    options.UseSqlite(cs);
-});
-
-// Services
-builder.Services.AddScoped<AuthService>();
-
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅✅ CORS حل نهائي (للتجربة والتطوير)
+// ✅ CORS (حدد Origin تبعك بالضبط)
+var allowedOrigins = new[]
+{
+    "https://chat-application-six-gilt.vercel.app"
+    // إذا عندك دومين ثاني على vercel ضيفه هون كمان
+};
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
+
+// ✅ SQLite DbContext
+builder.Services.AddDbContext<ChatDbContext>(options =>
+{
+    // لازم يكون SQLite connection string فقط
+    var cs = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=chat.db";
+    options.UseSqlite(cs);
+});
+
+// خدماتك
+builder.Services.AddScoped<AuthService>();
 
 var app = builder.Build();
 
@@ -50,16 +56,10 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ✅ Apply migrations automatically
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
-    db.Database.Migrate();
-}
-
+// ✅ مهم: UseRouting قبل CORS
 app.UseRouting();
 
-// ✅ مهم جداً: CORS قبل Authentication
+// ✅ مهم جداً: CORS مباشرة بعد UseRouting وقبل Auth
 app.UseCors("CorsPolicy");
 
 app.UseAuthentication();
@@ -67,5 +67,12 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
+
+// ✅ Migration
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
