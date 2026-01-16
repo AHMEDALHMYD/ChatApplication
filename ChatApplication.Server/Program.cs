@@ -1,6 +1,6 @@
 using ChatApplication.Server.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
-
+using ChatApplication.Server.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -20,7 +20,7 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
-
+builder.Services.AddScoped<AuthService>();
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
