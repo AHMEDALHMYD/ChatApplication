@@ -90,23 +90,24 @@ builder.Services.AddCors(options =>
     });
 });
 
-
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto
 });
 
 app.UseRouting();
 
-app.UseCors("AllowAngular");
-
-app.UseSwagger();
-app.UseSwaggerUI();
+app.UseCors("AllowAngular"); // ⭐ مهم يكون قبل Auth
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
