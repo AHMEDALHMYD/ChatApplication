@@ -73,16 +73,15 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngular", policy =>
     {
         policy
-            .SetIsOriginAllowed(origin =>
-                origin == "https://chat-application-six-gilt.vercel.app"
-                || (origin != null && origin.EndsWith(".vercel.app"))
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://chat-application-six-gilt.vercel.app"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
 });
-
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
