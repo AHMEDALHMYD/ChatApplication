@@ -10,23 +10,32 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers
+// =======================
+// Controllers & Swagger
+// =======================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// =======================
 // Database
+// =======================
 builder.Services.AddDbContext<ChatDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    ));
 
+// =======================
 // Services
+// =======================
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<MessageService>();
 builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
 
-// JWT
+// =======================
+// JWT Authentication
+// =======================
 var jwtKey = builder.Configuration["Authentication:Secretkey"]!;
 var jwtIssuer = builder.Configuration["Authentication:Issuer"];
 var jwtAudience = builder.Configuration["Authentication:Audience"];
@@ -46,6 +55,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             Encoding.UTF8.GetBytes(jwtKey))
     };
 
+    // SignalR JWT
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -53,8 +63,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
 
-            if (!string.IsNullOrEmpty(accessToken) &&
-                path.StartsWithSegments("/chatHub"))
+            if (!string.IsNullOrEmpty(accessToken)
+                && path.StartsWithSegments("/chatHub"))
             {
                 context.Token = accessToken;
             }
@@ -64,10 +74,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     };
 });
 
+// =======================
 // SignalR
+// =======================
 builder.Services.AddSignalR();
 
-// CORS
+// =======================
+// CORS (مهم جداً)
+// =======================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
@@ -78,28 +92,37 @@ builder.Services.AddCors(options =>
                 "https://chat-application-six-gilt.vercel.app"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
+            // ❌ لا AllowCredentials
     });
 });
+
 var app = builder.Build();
 
+// =======================
+// Forwarded Headers (Render)
+// =======================
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto
 });
 
+// =======================
+// Middleware Order (مهم)
+// =======================
 app.UseRouting();
 
-app.UseCors("AllowAngular"); // لازم هون بالضبط
+app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-app.MapHub<ChatHub>("/chatHub");
-
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.MapControllers();
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
