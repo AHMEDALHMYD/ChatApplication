@@ -74,8 +74,7 @@ builder.Services.AddCors(options =>
     {
         policy
             .SetIsOriginAllowed(origin =>
-                origin == "http://localhost:4200"
-                || origin == "https://chat-application-six-gilt.vercel.app"
+                origin == "https://chat-application-six-gilt.vercel.app"
                 || (origin != null && origin.EndsWith(".vercel.app"))
             )
             .AllowAnyHeader()
@@ -86,18 +85,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Forwarded headers (Render)
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
-// Middleware order (مهم جداً)
 app.UseRouting();
-app.UseCors("AllowAngular");
 
-app.UseSwagger();
-app.UseSwaggerUI();
+/* ✅ CORS لازم يكون هون */
+app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
