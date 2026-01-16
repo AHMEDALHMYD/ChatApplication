@@ -22,6 +22,8 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddScoped<AuthService>();
 var app = builder.Build();
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
