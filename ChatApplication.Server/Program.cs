@@ -1,12 +1,4 @@
-using ChatApplication.Server.Data;
-using ChatApplication.Server.Hubs;
-using ChatApplication.Server.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,90 +7,55 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database
-builder.Services.AddDbContext<ChatDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
-
-// Services
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<MessageService>();
-builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
-
-// CORS (لا تستخدم AllowCredentials حالياً)
+// ✅ CORS (الحل النهائي)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins(
+        policy
+            .WithOrigins(
                 "http://localhost:4200",
                 "https://chat-application-six-gilt.vercel.app"
             )
             .AllowAnyHeader()
             .AllowAnyMethod();
+            // ❌ لا تضع AllowCredentials() طالما ما عم تستخدم Cookies
     });
 });
 
-// JWT
-var jwtKey = builder.Configuration["Authentication:Secretkey"]!;
-var jwtIssuer = builder.Configuration["Authentication:Issuer"];
-var jwtAudience = builder.Configuration["Authentication:Audience"];
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-    };
-
-    // SignalR JWT
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
-
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
-                context.Token = accessToken;
-
-            return Task.CompletedTask;
-        }
-    };
-});
-
-// SignalR
+// SignalR (إذا موجود عندك)
 builder.Services.AddSignalR();
+
+// إذا عندك Authentication / Authorization خليه مثل ما هو عندك
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
+
+// لو عندك Services / DbContext حطها هون (مثل مشروعك)
+// builder.Services.AddDbContext<...>();
+// builder.Services.AddScoped<...>();
 
 var app = builder.Build();
 
-// مهم للـ Render / Reverse Proxy
+// Forwarded headers (Render)
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
-// Pipeline order الصح
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseRouting();
 
+// ✅ لازم CORS يكون هون (بين UseRouting و UseAuthentication/MapControllers)
 app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+app.MapControllers();
 
-// الأهم: اربط CORS على الـ endpoints كمان (حل قاطع)
-app.MapControllers().RequireCors("AllowAngular");
-app.MapHub<ChatHub>("/chatHub").RequireCors("AllowAngular");
+// لو عندك ChatHub
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
