@@ -46,7 +46,8 @@ builder.Services.AddDbContext<ChatDbContext>(options =>
 
 // خدماتك
 builder.Services.AddScoped<AuthService>();
-
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<MessageService>();
 var app = builder.Build();
 
 // Forwarded headers (Render)
