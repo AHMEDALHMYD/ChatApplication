@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: "http://chatapplication-main.runasp.net/"
+  apiUrl: "https://chatapplication-main.runasp.net/"
 };
