@@ -80,9 +80,9 @@ builder.Services.AddCors(options =>
     {
         policy
             .SetIsOriginAllowed(origin =>
-                origin == "http://localhost:4200"
-                || origin == "https://chat-application-six-gilt.vercel.app"
-                || (origin != null && origin.EndsWith(".vercel.app"))
+    origin == "http://localhost:4200"
+    || (origin != null && origin.EndsWith(".vercel.app"))
+)
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -92,16 +92,18 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
+app.UseRouting();
+
+app.UseCors("AllowAngular");
+
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseRouting();
-app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
