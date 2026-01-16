@@ -1,6 +1,8 @@
+using ChatApplication.Server.Data;
 using ChatApplication.Server.Hubs;
 using ChatApplication.Server.Services;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,23 +10,32 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-// ✅ Swagger SERVICES (كان ناقص)
+// ✅ SQLite DbContext
+builder.Services.AddDbContext<ChatDbContext>(options =>
+{
+    // من Environment Variable إذا موجود، وإلا من appsettings.json
+    var cs = builder.Configuration.GetConnectionString("DefaultConnection")
+             ?? "Data Source=chat.db";
+
+    options.UseSqlite(cs);
+});
+
+// خدماتك
+builder.Services.AddScoped<AuthService>();
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ CORS Policy
+// CORS (Vercel)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
         policy
-            // يسمح لأي رابط vercel من مشروعك
             .SetIsOriginAllowed(origin =>
-                origin.StartsWith("https://chat-application") && origin.EndsWith(".vercel.app")
-                // (اختياري) لو عندك رابط ثاني مثل: https://chatapplication-six-gilt.vercel.app
-                || origin.Contains(".vercel.app")
-                // (اختياري) للاختبار محلياً
-                || origin.StartsWith("http://localhost")
+                origin.StartsWith("https://chat-application") &&
+                origin.EndsWith(".vercel.app")
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -32,26 +43,29 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ✅ DI
-builder.Services.AddScoped<AuthService>();
-
 var app = builder.Build();
 
-// ✅ Forwarded headers (مناسب لـ Render)
+// Forwarded headers (Render)
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
-// ✅ Swagger (خليه شغال حتى بالإنتاج)
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ✅ Routing ثم CORS
-app.UseRouting();
-app.UseCors("CorsPolicy");
+// ✅ أنشئ/طبّق المايغريشن تلقائياً عند الإقلاع
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+    db.Database.Migrate();
+}
 
-// إذا أنت فعلياً مستخدم JWT/Identity خليهم
+app.UseRouting();
+
+app.UseCors("CorsPolicy"); // لازم قبل Authorization
+
 app.UseAuthentication();
 app.UseAuthorization();
 
