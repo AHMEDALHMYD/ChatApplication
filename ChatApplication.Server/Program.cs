@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using ChatApplication.Server.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
