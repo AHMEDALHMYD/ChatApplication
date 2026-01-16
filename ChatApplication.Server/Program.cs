@@ -92,13 +92,15 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 app.UseRouting();
 
-/* ✅ CORS لازم يكون هون */
-app.UseCors("AllowAngular");
+app.UseCors("AllowAngular"); // لازم هون بالضبط
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.Run();
