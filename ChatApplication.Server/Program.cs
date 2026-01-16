@@ -8,55 +8,54 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ CORS (الحل النهائي)
+// SignalR
+builder.Services.AddSignalR();
+
+// ✅ CORS (لازم سياسة واضحة)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular", policy =>
+    options.AddPolicy("AllowClient", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:4200",
-                "https://chat-application-six-gilt.vercel.app"
+            // ✅ اسمح لأي دومين من vercel.app + localhost
+            .SetIsOriginAllowed(origin =>
+                origin == "http://localhost:4200" ||
+                (origin != null && origin.EndsWith(".vercel.app"))
             )
             .AllowAnyHeader()
-            .AllowAnyMethod();
-            // ❌ لا تضع AllowCredentials() طالما ما عم تستخدم Cookies
+            .AllowAnyMethod()
+            .AllowCredentials(); // مهم للـ SignalR / Cookies لو موجودة
     });
 });
 
-// SignalR (إذا موجود عندك)
-builder.Services.AddSignalR();
-
-// إذا عندك Authentication / Authorization خليه مثل ما هو عندك
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorization();
-
-// لو عندك Services / DbContext حطها هون (مثل مشروعك)
-// builder.Services.AddDbContext<...>();
-// builder.Services.AddScoped<...>();
+// (إذا عندك Auth/JWT services خليها مثل ما هي عندك)
+// builder.Services.AddAuthentication(...);
+// builder.Services.AddAuthorization(...);
 
 var app = builder.Build();
 
-// Forwarded headers (Render)
+// Forwarded headers (مفيد مع Render/Proxy)
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// ✅ ترتيب الميدلوير الصحيح
 app.UseRouting();
 
-// ✅ لازم CORS يكون هون (بين UseRouting و UseAuthentication/MapControllers)
-app.UseCors("AllowAngular");
+// ✅ لازم يكون هون قبل auth
+app.UseCors("AllowClient");
 
+// بعد CORS
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
-// لو عندك ChatHub
-app.MapHub<ChatHub>("/chatHub");
+// ✅ فرض CORS على الـ Controllers والـ Hub
+app.MapControllers().RequireCors("AllowClient");
+app.MapHub<ChatHub>("/chatHub").RequireCors("AllowClient");
 
 app.Run();
